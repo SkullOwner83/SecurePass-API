@@ -1,11 +1,11 @@
 ﻿namespace SecurePass.Models
 {
-	public class Password
+	public class Generator
 	{
 		public int Length { get; set; }
-		public bool CapitalLetters { get; set; }
-		public bool SmallLetters { get; set; }
+		public bool Upper { get; set; }
+		public bool Lower { get; set; }
 		public bool Numbers { get; set; }
-		public bool SpecialCharacters { get; set; }
+		public bool Symbols { get; set; }
 	}
 }

@@ -1,5 +1,5 @@
 using SecurePass.Models;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,18 +26,23 @@ app.MapControllers();
 
 app.MapGet("/", () => "Hello World");
 
-app.MapPost("/generate", (Password password) => {
-	StringBuilder sb = new StringBuilder();
+app.MapPost("/generate", (Generator generator) => {
 	Random random = new Random();
-	char[] result = new char[password.Length];
+	char[] result = new char[generator.Length];
 	string chars = string.Empty;
 
-	if (password.CapitalLetters) chars += string.Concat(Enumerable.Range('A', 26).Select(c => (char)c));
-	if (password.SmallLetters) chars += string.Concat(Enumerable.Range('a', 26).Select(c => (char)c));
-	if (password.Numbers) chars += string.Concat(Enumerable.Range('0', 10).Select(c => (char)c));
-	if (password.SpecialCharacters) chars += string.Concat(
-		Enumerable.Range(33, 94).Select(i => (char)i).Where(c => !char.IsLetterOrDigit(c)
-	));
+	if (generator.Length < 0 || generator.Length > 100) {
+		return Results.BadRequest("Specified length out of range.");
+	}
+
+	if (generator.Upper) chars += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	if (generator.Lower) chars += "abcdefghijklmnopqrstuvwxyz";
+	if (generator.Numbers) chars += "0123456789";
+	if (generator.Symbols) chars += "!@#$%^&*()-_=+[]{};:,.<>/?|\\`~";
+
+	if (string.IsNullOrEmpty(chars)) {
+		return Results.BadRequest("No character groups gave been provided to generate the password.");
+	}
 
 	for(int i = 0; i < result.Length; i++)
 	{
@@ -47,5 +52,3 @@ app.MapPost("/generate", (Password password) => {
 	string generatedPassword = new string(result);
 	return Results.Ok(generatedPassword);
 });
-
-app.Run();
