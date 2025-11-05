@@ -1,3 +1,6 @@
+using SecurePass.Models;
+using System.Text;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -17,11 +20,24 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.MapGet("/", () => "Hello World");
+
+app.MapPost("/password", (Password password) => {
+	StringBuilder sb = new StringBuilder();
+	Random random = new Random();
+	string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	char[] stringChars = new char[password.Length];
+
+	for(int i = 0; i < stringChars.Length; i++)
+	{
+		stringChars[i] = chars[random.Next(chars.Length)];
+	}
+
+	string generatedPassword = new string(stringChars);
+	return Results.Ok(generatedPassword);
+});
 
 app.Run();
