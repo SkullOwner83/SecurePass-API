@@ -1,4 +1,5 @@
 using SecurePass.Models;
+using System.Runtime.InteropServices;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,18 +26,25 @@ app.MapControllers();
 
 app.MapGet("/", () => "Hello World");
 
-app.MapPost("/password", (Password password) => {
+app.MapPost("/generate", (Password password) => {
 	StringBuilder sb = new StringBuilder();
 	Random random = new Random();
-	string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	char[] stringChars = new char[password.Length];
+	char[] result = new char[password.Length];
+	string chars = string.Empty;
 
-	for(int i = 0; i < stringChars.Length; i++)
+	if (password.CapitalLetters) chars += string.Concat(Enumerable.Range('A', 26).Select(c => (char)c));
+	if (password.SmallLetters) chars += string.Concat(Enumerable.Range('a', 26).Select(c => (char)c));
+	if (password.Numbers) chars += string.Concat(Enumerable.Range('0', 10).Select(c => (char)c));
+	if (password.SpecialCharacters) chars += string.Concat(
+		Enumerable.Range(33, 94).Select(i => (char)i).Where(c => !char.IsLetterOrDigit(c)
+	));
+
+	for(int i = 0; i < result.Length; i++)
 	{
-		stringChars[i] = chars[random.Next(chars.Length)];
+		result[i] = chars[random.Next(chars.Length)];
 	}
 
-	string generatedPassword = new string(stringChars);
+	string generatedPassword = new string(result);
 	return Results.Ok(generatedPassword);
 });
 
