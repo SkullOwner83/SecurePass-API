@@ -1,0 +1,6 @@
+@SecurePass_HostAddress = http://localhost:5204
+
+GET {{SecurePass_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
