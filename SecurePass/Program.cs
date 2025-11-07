@@ -1,5 +1,4 @@
 using SecurePass.Models;
-using System.Text.RegularExpressions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,27 +51,53 @@ app.MapPost("/generate", (Generator generator) => {
 
 app.MapPost("/validate", (string password) =>
 {
-	if (string.IsNullOrEmpty(password))
-		return Results.BadRequest("Password cannot be empty.");
+    if (string.IsNullOrEmpty(password))
+        return Results.BadRequest("Password cannot be empty.");
 
-	int score = 0;
+    var evaluator = new Zxcvbn.Zxcvbn();
+    var result = evaluator.EvaluatePassword(password);
 
-	if (password.Any(char.IsUpper)) score++;
-	if (password.Any(char.IsNumber)) score++;
-	if (password.Any(c => char.IsSymbol(c) || char.IsPunctuation(c))) score++;
-	if (password.Length >= 12) score++;
-	if (Regex.IsMatch(password, @"(abc|123|qwe|password|admin)", RegexOptions.IgnoreCase)) score -= 2;
+    var diagnostic = new Diagnostic
+    {
+        Characters = password.Length,
+        Entropy = result.Entropy
+    };
 
-	string strength = score switch
-	{
-		1 => "Weak",
-		2 => "Medium",
-		3 => "Strong",
-		4 => "Very strong",
-		_ => "Unknown"
-	};
+    double diversity = 0;
+    if (password.Any(char.IsLower)) diversity += 0.25;
+    if (password.Any(char.IsUpper)) diversity += 0.25;
+    if (password.Any(char.IsDigit)) diversity += 0.25;
+    if (password.Any(c => char.IsSymbol(c) || char.IsPunctuation(c))) diversity += 0.25;
 
-	return Results.Ok(strength);
+    // --- Normalize entropy to 0–1 range ---
+    double normalizedEntropy = Math.Min(result.Entropy / 128.0, 1.0);
+
+    // --- Combine entropy + diversity + length into a single score ---
+    double lengthFactor = Math.Min(password.Length / 20.0, 1.0);
+    double combinedScore = (normalizedEntropy * 0.6) + (diversity * 0.3) + (lengthFactor * 0.1);
+    double percentage = Math.Round(combinedScore * 100, 2);
+    diagnostic.Score = percentage;
+
+    // --- Strength classification based on percentage ---
+    diagnostic.Strength = percentage switch
+    {
+        < 20 => "Very weak",
+        < 40 => "Weak",
+        < 60 => "Medium",
+        < 80 => "Strong",
+        _ => "Very strong"
+    };
+
+
+    if (!password.Any(char.IsUpper)) diagnostic.Suggestions.Add("Add at least one uppercase letter.");
+    if (!password.Any(char.IsLower)) diagnostic.Suggestions.Add("Add at least one lowercase letter.");
+    if (!password.Any(char.IsDigit)) diagnostic.Suggestions.Add("Add at least one number.");
+    if (!password.Any(c => char.IsSymbol(c) || char.IsPunctuation(c))) diagnostic.Suggestions.Add("Add at least one symbol or special character.");
+    if (!password.Contains(' ')) diagnostic.Suggestions.Add("Add at least one space or separator to improve unpredictability.");
+    if (password.Length < 12) diagnostic.Suggestions.Add("Increase the password length to at least 12 characters.");
+    if (result.Entropy < 36) diagnostic.Suggestions.Add("Avoid common words or predictable patterns.");
+
+    return Results.Ok(diagnostic);
 });
 
 app.Run();
